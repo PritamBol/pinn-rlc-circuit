@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PINN RLC Circuit Explorer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #0f1117; color: #e8e6e0; min-height: 100vh; padding: 20px; }
+  h1 { font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 20px; }
+
+  .layout { display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+
+  .panel { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 18px; }
+  .panel-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #666; margin-bottom: 14px; }
+
+  .param-block { margin-bottom: 16px; }
+  .param-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 13px; }
+  .param-name { color: #ccc; }
+  .param-value { font-weight: 600; color: #7eb8f7; font-family: monospace; font-size: 13px; }
+  input[type=range] { width: 100%; accent-color: #7eb8f7; cursor: pointer; }
+
+  .badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; margin-bottom: 16px; }
+  .badge-under  { background: #1a3a5c; color: #7eb8f7; }
+  .badge-crit   { background: #1a3a2a; color: #6ecb9e; }
+  .badge-over   { background: #3a2a1a; color: #f7a96b; }
+
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .metric { background: #12151e; border-radius: 8px; padding: 10px; text-align: center; }
+  .metric-val { font-size: 18px; font-weight: 600; color: #fff; }
+  .metric-lbl { font-size: 11px; color: #666; margin-top: 2px; }
+
+  .chart-wrap { position: relative; height: 280px; }
+
+  .eq-box { background: #12151e; border-radius: 8px; padding: 12px 14px; font-family: monospace; font-size: 12px; color: #aaa; line-height: 1.7; margin-bottom: 14px; }
+  .eq-highlight { color: #7eb8f7; font-weight: 600; }
+
+  .info-row { display: flex; gap: 16px; margin-top: 8px; font-size: 11px; color: #555; }
+  .dot { display: inline-block; width: 10px; height: 2px; vertical-align: middle; margin-right: 5px; border-radius: 1px; }
+
+  .preset-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .preset { padding: 5px 12px; font-size: 11px; background: #12151e; border: 1px solid #2a2d3a; border-radius: 6px; color: #aaa; cursor: pointer; transition: all .15s; }
+  .preset:hover { background: #1e2130; color: #fff; border-color: #3a4060; }
+
+  @media (max-width: 680px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>⚡ PINN RLC Circuit Explorer</h1>
+<p class="subtitle">Physics-Informed Neural Network — Series RLC Circuit Simulator &nbsp;|&nbsp; Phase 5</p>
+
+<div class="layout">
+  <!-- Left panel: controls -->
+  <div>
+    <div class="panel" style="margin-bottom:14px">
+      <div class="panel-title">Circuit Parameters</div>
+
+      <div class="preset-row">
+        <button class="preset" onclick="setPreset(10,1,0.01)">Underdamped</button>
+        <button class="preset" onclick="setPreset(20,1,0.01)">Critical</button>
+        <button class="preset" onclick="setPreset(40,1,0.01)">Overdamped</button>
+      </div>
+
+      <div class="param-block">
+        <div class="param-label">
+          <span class="param-name">R — Resistance</span>
+          <span class="param-value" id="R-lbl">10.0 Ω</span>
+        </div>
+        <input type="range" id="R" min="1" max="50" step="0.5" value="10" oninput="update()">
+      </div>
+      <div class="param-block">
+        <div class="param-label">
+          <span class="param-name">L — Inductance</span>
+          <span class="param-value" id="L-lbl">1.0 H</span>
+        </div>
+        <input type="range" id="L" min="0.1" max="5" step="0.1" value="1" oninput="update()">
+      </div>
+      <div class="param-block">
+        <div class="param-label">
+          <span class="param-name">C — Capacitance</span>
+          <span class="param-value" id="C-lbl">0.010 F</span>
+        </div>
+        <input type="range" id="C" min="0.002" max="0.1" step="0.001" value="0.01" oninput="update()">
+      </div>
+
+      <div id="badge" class="badge badge-under">Underdamped</div>
+
+      <div class="metrics">
+        <div class="metric"><div class="metric-val" id="zeta-v">0.50</div><div class="metric-lbl">ζ (damping)</div></div>
+        <div class="metric"><div class="metric-val" id="omega-v">10.0</div><div class="metric-lbl">ω₀ rad/s</div></div>
+        <div class="metric"><div class="metric-val" id="td-v">0.20</div><div class="metric-lbl">τ decay (s)</div></div>
+        <div class="metric"><div class="metric-val" id="freq-v">1.59</div><div class="metric-lbl">f₀ Hz</div></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Governing Equation (KVL)</div>
+      <div class="eq-box">
+        <span class="eq-highlight" id="L-eq">1.0</span>·q''(t) +
+        <span class="eq-highlight" id="R-eq">10.0</span>·q'(t) +
+        q(t) / <span class="eq-highlight" id="C-eq">0.010</span> = 0
+        <br><br>
+        q(0) = 1 C &nbsp;&nbsp; q'(0) = 0 A
+        <br><br>
+        PINN loss = <span style="color:#f7a96b">L·q'' + R·q' + q/C</span> → 0
+      </div>
+      <div style="font-size:11px; color:#555; line-height:1.6">
+        The PINN minimizes the ODE residual at 500 collocation points using automatic differentiation — no mesh, no finite differences.
+      </div>
+    </div>
+  </div>
+
+  <!-- Right panel: chart -->
+  <div class="panel">
+    <div class="panel-title">Simulated Response — q(t) &amp; I(t)</div>
+    <div class="chart-wrap">
+      <canvas id="chart"></canvas>
+    </div>
+    <div class="info-row">
+      <span><span class="dot" style="background:#7eb8f7;height:2px;display:inline-block;width:14px;vertical-align:middle;margin-right:5px"></span>q(t) Charge [C]</span>
+      <span><span class="dot" style="background:#f7a96b;display:inline-block;width:14px;height:2px;vertical-align:middle;margin-right:5px;border-top:2px dashed #f7a96b"></span>I(t) Current [A]</span>
+    </div>
+
+    <div style="margin-top:18px">
+      <div class="panel-title">Phase 4 Insight — Inverse Problem</div>
+      <div id="inverse-info" style="font-size:12px; color:#888; line-height:1.7; background:#12151e; border-radius:8px; padding:12px"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── ODE solver (Euler + RK4) ──────────────────────────────────
+function solveRLC(R, L, C, steps=500, tMax=2.5) {
+  const dt = tMax / steps;
+  let q = 1, dq = 0;
+  const qs = [q], dqs = [dq], ts = [0];
+  for (let i = 1; i <= steps; i++) {
+    // RK4 for accuracy
+    const f = (q, dq) => (-R * dq - q / C) / L;
+    const k1q = dq,           k1dq = f(q, dq);
+    const k2q = dq+k1dq*dt/2, k2dq = f(q+k1q*dt/2, dq+k1dq*dt/2);
+    const k3q = dq+k2dq*dt/2, k3dq = f(q+k2q*dt/2, dq+k2dq*dt/2);
+    const k4q = dq+k3dq*dt,   k4dq = f(q+k3q*dt,   dq+k3dq*dt);
+    q  += dt/6 * (k1q  + 2*k2q  + 2*k3q  + k4q);
+    dq += dt/6 * (k1dq + 2*k2dq + 2*k3dq + k4dq);
+    qs.push(q); dqs.push(dq); ts.push(i * dt);
+  }
+  return { qs, dqs, ts };
+}
+
+// ── Chart setup ───────────────────────────────────────────────
+const ctx = document.getElementById('chart').getContext('2d');
+const chart = new Chart(ctx, {
+  type: 'line',
+  data: { labels: [], datasets: [
+    { label: 'q(t)', data: [], borderColor: '#7eb8f7', borderWidth: 2, pointRadius: 0, tension: 0.3, fill: false },
+    { label: 'I(t)', data: [], borderColor: '#f7a96b', borderWidth: 1.5, borderDash: [5,4], pointRadius: 0, tension: 0.3, fill: false }
+  ]},
+  options: {
+    animation: { duration: 120 },
+    responsive: true, maintainAspectRatio: false,
+    scales: {
+      x: { ticks: { color: '#555', maxTicksLimit: 6 }, grid: { color: '#1e2130' } },
+      y: { ticks: { color: '#555' }, grid: { color: '#1e2130' } }
+    },
+    plugins: { legend: { labels: { color: '#888', font: { size: 11 } } } }
+  }
+});
+
+// ── Update ────────────────────────────────────────────────────
+function update() {
+  const R = parseFloat(document.getElementById('R').value);
+  const L = parseFloat(document.getElementById('L').value);
+  const C = parseFloat(document.getElementById('C').value);
+
+  document.getElementById('R-lbl').textContent = R.toFixed(1) + ' Ω';
+  document.getElementById('L-lbl').textContent = L.toFixed(1) + ' H';
+  document.getElementById('C-lbl').textContent = C.toFixed(3) + ' F';
+  document.getElementById('R-eq').textContent  = R.toFixed(1);
+  document.getElementById('L-eq').textContent  = L.toFixed(1);
+  document.getElementById('C-eq').textContent  = C.toFixed(3);
+
+  const zeta  = (R / 2) * Math.sqrt(C / L);
+  const omega = 1 / Math.sqrt(L * C);
+  const tau   = 2 * L / R;
+  const freq  = omega / (2 * Math.PI);
+
+  document.getElementById('zeta-v').textContent  = zeta.toFixed(3);
+  document.getElementById('omega-v').textContent = omega.toFixed(2);
+  document.getElementById('td-v').textContent    = tau.toFixed(3);
+  document.getElementById('freq-v').textContent  = freq.toFixed(2);
+
+  const badge = document.getElementById('badge');
+  if (zeta < 0.99) {
+    badge.textContent = '⚡ Underdamped — oscillates';
+    badge.className = 'badge badge-under';
+  } else if (zeta < 1.01) {
+    badge.textContent = '⚖️ Critically Damped';
+    badge.className = 'badge badge-crit';
+  } else {
+    badge.textContent = '🛑 Overdamped — no oscillation';
+    badge.className = 'badge badge-over';
+  }
+
+  const { qs, dqs, ts } = solveRLC(R, L, C);
+  chart.data.labels = ts.map(t => t.toFixed(2));
+  chart.data.datasets[0].data = qs;
+  chart.data.datasets[1].data = dqs;
+  chart.update();
+
+  // Inverse problem insight
+  const R_guess = (R * 0.5).toFixed(1);
+  const L_guess = (L * 0.5).toFixed(1);
+  const C_guess = (C * 2).toFixed(3);
+  document.getElementById('inverse-info').innerHTML = `
+    In Phase 4, we hide the true values (R=${R}Ω, L=${L}H, C=${C.toFixed(3)}F)
+    and start the PINN with wrong guesses (R=${R_guess}Ω, L=${L_guess}H, C=${C_guess}F).<br><br>
+    The PINN trains on <b style="color:#7eb8f7">noisy measurements</b> of the curve above
+    and simultaneously adjusts both its network weights AND the R, L, C parameters
+    until they converge to the true values — discovering the circuit from data alone.
+  `;
+}
+
+function setPreset(R, L, C) {
+  document.getElementById('R').value = R;
+  document.getElementById('L').value = L;
+  document.getElementById('C').value = C;
+  update();
+}
+
+update();
+</script>
+</body>
+</html>
