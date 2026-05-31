@@ -88,6 +88,7 @@ python src/phase4_inverse.py
 
 ### 4. Open the interactive app
 Just open `docs/interactive_app.html` in any browser — no Python needed.
+
 Live link: https://pritambol.github.io/pinn-rlc-circuit/interactive_app.html
 
 ---
