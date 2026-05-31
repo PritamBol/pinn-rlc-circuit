@@ -64,7 +64,7 @@ pinn-rlc-circuit/
 
 ### 1. Clone the repo
 ```bash
-git clone https://github.com/YOUR_USERNAME/pinn-rlc-circuit.git
+git clone https://github.com/PritamBol/pinn-rlc-circuit.git
 cd pinn-rlc-circuit
 ```
 
