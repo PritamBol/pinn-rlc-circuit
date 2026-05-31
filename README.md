@@ -93,8 +93,11 @@ Just open `docs/interactive_app.html` in any browser — no Python needed.
 
 ## 📊 Results
 
+
+
 ### Phase 2 — PINN vs ODE Solver
 The PINN matches the scipy RK45 ground truth with **< 0.1% relative error** using zero measured data.
+![Phase 2 Result](results/pinn_phase2_result.png)
 
 ### Phase 3 — Three Damping Regimes
 
@@ -103,6 +106,8 @@ The PINN matches the scipy RK45 ground truth with **< 0.1% relative error** usin
 | Underdamped | 10 | 0.50 | ~0.001 C |
 | Critically damped | 20 | 1.00 | ~0.0005 C |
 | Overdamped | 40 | 2.00 | ~0.0003 C |
+
+![Phase 2 Result](results/pinn_phase3_result.png)
 
 ### Phase 4 — Inverse Problem
 
@@ -115,6 +120,7 @@ Starting from wrong guesses (50% off), the PINN recovers:
 | R | 10.0 Ω | ~10.0 Ω | < 1% |
 | C | 0.01 F | ~0.01 F | < 1% |
 
+![Phase 4 Result](results/pinn_phase4_result.png)
 ---
 
 ## 💡 Key Concepts
